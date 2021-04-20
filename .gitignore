@@ -2,3 +2,6 @@
 **/1wk/
 *.7z
 __pycache__
+Source
+*.log
+*.xls
