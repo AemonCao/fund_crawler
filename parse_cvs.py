@@ -1,29 +1,30 @@
 import csv
 import os
-import xlwt
 import config
 import tool
 import logging
 import time
+from openpyxl import Workbook
 
 
 def read_csv(csv_path):
     csvFile = open(csv_path, 'r')
     reader = csv.reader(csvFile)
 
-    result = {}
+    result = []
+    # 倒序循环
     for item in reader:
         if reader.line_num == 1:
             continue
-        result[item[0]] = item[5]
+        result.append({'Date': item[0], 'Adj Close': item[5]})
 
     csvFile.close()
-    return result
+    return reversed(result)
 
 
 def new_excel():
     source_path = 'Source'
-    date_type = 'mo'
+    date_type = 'wk'
     g = os.walk(source_path)
     # path,dir_list,file_list
 
@@ -32,18 +33,34 @@ def new_excel():
             # 获取类别列表
             dirCategoryList = val[1]
 
-    wordbook = xlwt.Workbook(encoding='utf-8')
+    workbook = Workbook()
+    # 删除第一张默认生成的 sheet
+    workbook.remove(workbook['Sheet'])
     # 类别循环
-    for sheet_name in dirCategoryList:
+    for category_name in dirCategoryList:
         # 新建 sheet
-        sheet = wordbook.add_sheet(sheet_name)
-        sheet.write(0, 0, sheet_name)
-        category_path = '%s\\%s\\1%s' % (source_path, sheet_name, date_type)
+        sheet = workbook.create_sheet()
+        sheet.title = category_name
+        category_path = '%s\\%s\\1%s' % (source_path, category_name, date_type)
         category_path_g = os.walk(category_path)
+        column_index = 0
+        # 基金循环
         for path, dir_list, file_list in category_path_g:
-            logging.info(file_list)
+            for csv_file in file_list:
+                column_index = column_index + 1
+                fund_name = csv_file.split('-')[0]
+                sheet.cell(row=1, column=column_index+1).value = fund_name
+                # 构建单个基金 cvs 文件路径
+                fund_cvs_path = '%s\\%s' % (category_path, csv_file)
+                row_index = 0
+                for item in read_csv(fund_cvs_path):
+                    row_index = row_index + 1
+                    sheet.cell(row=row_index+1, column=1).value = item['Date']
+                    sheet.cell(row=row_index+1, column=column_index +
+                               1).value = item['Adj Close']
 
-    wordbook.save('D:\\Code\\Python\\fund_crawler\\finally-%s-%s.xls' %
+    # 保存为 xlsx
+    workbook.save('D:\\Code\\Python\\fund_crawler\\finally-%s-%s.xlsx' %
                   (date_type, tool.get_now_time()))
 
 
@@ -67,6 +84,3 @@ new_excel()
 #     if i == 0:
 #         dirCategoryList = val[1]
 #     print(val[2])
-
-
-# print(read_csv('D:\\Code\\Python\\fund_crawler\\Source\\Commodities Broad Basket\\1mo\\ARCIX-0-1618869825.csv'))
