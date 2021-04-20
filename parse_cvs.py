@@ -24,7 +24,7 @@ def read_csv(csv_path):
 
 def new_excel():
     source_path = 'Source'
-    date_type = 'wk'
+    date_type = 'mo'
     g = os.walk(source_path)
     # path,dir_list,file_list
 
@@ -43,21 +43,37 @@ def new_excel():
         sheet.title = category_name
         category_path = '%s\\%s\\1%s' % (source_path, category_name, date_type)
         category_path_g = os.walk(category_path)
-        column_index = 0
+        column_index = 1
         # 基金循环
         for path, dir_list, file_list in category_path_g:
             for csv_file in file_list:
-                column_index = column_index + 1
                 fund_name = csv_file.split('-')[0]
                 sheet.cell(row=1, column=column_index+1).value = fund_name
+                sheet.cell(row=1, column=column_index +
+                           2).value = '%s return' % fund_name
                 # 构建单个基金 cvs 文件路径
                 fund_cvs_path = '%s\\%s' % (category_path, csv_file)
-                row_index = 0
+                row_index_1 = 0
+                row_index_2 = 0
                 for item in read_csv(fund_cvs_path):
-                    row_index = row_index + 1
-                    sheet.cell(row=row_index+1, column=1).value = item['Date']
-                    sheet.cell(row=row_index+1, column=column_index +
-                               1).value = item['Adj Close']
+                    row_index_1 = row_index_1 + 1
+                    sheet.cell(row=row_index_1 + 1,
+                               column=1).value = item['Date']
+                    if item['Adj Close'] == 'null':
+                        continue
+                    sheet.cell(row=row_index_1 + 1, column=column_index +
+                               1).value = float(item['Adj Close'])
+                for item in read_csv(fund_cvs_path):
+                    row_index_2 = row_index_2 + 1
+                    if sheet.cell(row=row_index_2 + 2, column=column_index+1).value == None:
+                        continue
+                    yesterday_adj_close = float(sheet.cell(
+                        row=row_index_2 + 2, column=column_index+1).value)
+                    if item['Adj Close'] == 'null':
+                        continue
+                    sheet.cell(row=row_index_2 + 1, column=column_index +
+                               2).value = float((float(item['Adj Close']) - yesterday_adj_close) / yesterday_adj_close)
+                column_index = column_index + 2
 
     # 保存为 xlsx
     workbook.save('D:\\Code\\Python\\fund_crawler\\finally-%s-%s.xlsx' %
